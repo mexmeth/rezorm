@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rezervasyon Sistemi</title>
+  <style>
+    :root {
+      --primary: #3498db;
+      --success: #2ecc71;
+      --danger: #e74c3c;
+      --warning: #f1c40f;
+      --bg: #f4f6f8;
+      --input: #fdfdfd;
+      --text: #2c3e50;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 30px;
+    }
+
+    .btn {
+      padding: 7px 14px;
+      font-size: 13px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-secondary { background: var(--success); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-warning { background: var(--warning); color: white; }
+
+    .btn:hover { opacity: 0.9; }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: white;
+      width: 100%;
+      max-width: 450px;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+      animation: fadeIn 0.3s ease;
+    }
+
+    @media (max-width: 600px) {
+      .modal {
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        border-radius: 0;
+        overflow-y: auto;
+      }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h2 {
+      margin-top: 0;
+      margin-bottom: 15px;
+      font-size: 20px;
+      text-align: center;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .form-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: space-between;
+    }
+
+    .form-row label {
+      flex: 0 0 120px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .form-row input,
+    .form-row textarea,
+    .form-row select {
+      flex: 1;
+      padding: 7px 8px;
+      font-size: 13px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      background: var(--input);
+    }
+
+    .form-row textarea {
+      height: 60px;
+      resize: none;
+    }
+
+    .input-with-currency {
+      position: relative;
+      flex: 1;
+    }
+
+    .currency-symbol {
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 15px;
+      font-weight: 500;
+      color: #999;
+      pointer-events: none;
+      opacity: 0.8;
+    }
+
+    .input-with-currency input {
+      padding-left: 28px;
+    }
+
+    .currency-select {
+      padding: 3px 6px;
+      font-size: 12px;
+      margin-left: 5px;
+    }
+
+    .form-actions {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 15px;
+    }
+
+    .action-right {
+      display: flex;
+      gap: 8px;
+    }
+
+    .form-duo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .btn-sm-fixed {
+      padding: 7px 12px;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+
+  <button class="btn btn-primary" onclick="openModal('rezModal')">Rezervasyon Ekle</button>
+
+  <!-- REZERVASYON MODALI -->
+  <div class="modal-overlay" id="rezModal">
+    <div class="modal">
+      <h2>Yeni Rezervasyon</h2>
+      <form id="rezForm">
+        <div class="form-row"><label>Oda:</label><input type="text" name="oda"></div>
+        <div class="form-row"><label>Ad Soyad:</label><input type="text" name="ad_soyad"></div>
+        <div class="form-row"><label>İletişim:</label><input type="text" name="iletisim"></div>
+        <div class="form-row"><label>TC No:</label><input type="text" name="tc_no"></div>
+        <div class="form-row"><label>Giriş:</label><input type="date" name="giris_tarihi"></div>
+        <div class="form-row"><label>Çıkış:</label><input type="date" name="cikis_tarihi"></div>
+
+        <div class="form-row">
+          <label>Fiyat:</label>
+          <div class="input-with-currency">
+            <span class="currency-symbol" id="fiyatSymbol">₺</span>
+            <input type="text" id="fiyat">
+          </div>
+          <select id="paraBirimi" class="currency-select" onchange="guncelleSemboller()">
+            <option value="₺">₺</option>
+            <option value="$">$</option>
+            <option value="€">€</option>
+            <option value="£">£</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label>Alınan:</label>
+          <div class="form-duo">
+            <div class="input-with-currency">
+              <span class="currency-symbol" id="alinanSymbol">₺</span>
+              <input type="text" id="alinan" value="0,00" readonly>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm-fixed" onclick="openModal('odemeModal')">+ Ödeme</button>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label>Kalan:</label>
+          <div class="form-duo">
+            <input type="text" id="kalan">
+            <button type="button" class="btn btn-primary btn-sm-fixed" onclick="openOdemeList()">Ödemeler</button>
+          </div>
+        </div>
+
+        <div class="form-row"><label>Gün:</label><input type="number" name="gun"></div>
+        <div class="form-row"><label>Kişi Sayısı:</label><input type="number" name="kisi_sayisi"></div>
+        <div class="form-row"><label>Rez. No:</label><input type="text" name="rez_no"></div>
+        <div class="form-row"><label>Oda Adı:</label><input type="text" name="oda_adi" readonly></div>
+        <div class="form-row"><label>Not:</label><textarea name="not"></textarea></div>
+
+        <div class="form-actions">
+          <div class="action-right">
+            <button type="submit" class="btn btn-secondary">Kaydet</button>
+            <button type="reset" class="btn btn-warning">Temizle</button>
+            <button type="button" class="btn btn-danger" onclick="closeModal('rezModal')">Kapat</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  <!-- ÖDEME EKLE MODALI -->
+  <div class="modal-overlay" id="odemeModal">
+    <div class="modal">
+      <h2>Ödeme Ekle</h2>
+      <div class="form-row"><label>Yöntem:</label>
+        <select id="odemeYontem">
+          <option>Nakit</option>
+          <option>Havale/EFT</option>
+          <option>Kredi Kartı</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Tutar:</label>
+        <div class="input-with-currency">
+          <span class="currency-symbol" id="odemeSymbol">₺</span>
+          <input type="number" id="odemeTutar">
+        </div>
+      </div>
+      <div class="form-row"><label>Not:</label><input type="text" id="odemeNot"></div>
+      <div class="form-row"><label>Tarih:</label><input type="date" id="odemeTarih"></div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="ekleOdeme()">Ekle</button>
+        <button class="btn btn-danger" onclick="closeModal('odemeModal')">İptal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÖDEME GEÇMİŞİ MODALI -->
+  <div class="modal-overlay" id="odemeListModal">
+    <div class="modal">
+      <h2>Ödeme Geçmişi</h2>
+      <div id="odemeListe" style="max-height:260px; overflow-y:auto;"></div>
+      <div class="form-actions" style="justify-content:center;">
+        <button class="btn btn-danger" onclick="closeModal('odemeListModal')">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const odemeler = [];
+
+    function openModal(id) {
+      document.getElementById(id).classList.add("active");
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove("active");
+    }
+
+    function getParaBirimi() {
+      return document.getElementById("paraBirimi").value || "₺";
+    }
+
+    function guncelleSemboller() {
+      const sembol = getParaBirimi();
+      document.getElementById("fiyatSymbol").innerText = sembol;
+      document.getElementById("alinanSymbol").innerText = sembol;
+      document.getElementById("odemeSymbol").innerText = sembol;
+    }
+
+    function formatTutar(num) {
+      const [intPart, decPart] = Number(num).toFixed(2).split(".");
+      const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      return `<span>${formattedInt}</span><sup style="font-size:10px; opacity:0.6">,${decPart}</sup>`;
+    }
+
+    function formatTarih(tarih) {
+      const date = new Date(tarih);
+      const aylar = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+      const gun = date.getDate().toString().padStart(2, '0');
+      const ay = aylar[date.getMonth()];
+      const yil = date.getFullYear().toString().slice(-2);
+      return `${gun} ${ay} ${yil}`;
+    }
+
+    function ekleOdeme() {
+      const tutar = parseFloat(document.getElementById("odemeTutar").value);
+      const yontem = document.getElementById("odemeYontem").value;
+      const not = document.getElementById("odemeNot").value;
+      let tarih = document.getElementById("odemeTarih").value;
+      const birim = getParaBirimi();
+
+      if (!tarih) {
+        const now = new Date();
+        tarih = now.toISOString().split("T")[0];
+      }
+
+      if (!isNaN(tutar) && tutar > 0) {
+        odemeler.push({ tutar, yontem, not, tarih, birim });
+
+        const alinan = document.getElementById("alinan");
+        const mevcut = parseFloat(alinan.value.replace(/\./g, "").replace(",", ".")) || 0;
+        const yeni = mevcut + tutar;
+        alinan.value = yeni.toLocaleString("tr-TR", { minimumFractionDigits: 2 });
+
+        document.getElementById("odemeTutar").value = "";
+        document.getElementById("odemeNot").value = "";
+        document.getElementById("odemeTarih").value = "";
+
+        closeModal("odemeModal");
+      } else {
+        alert("Geçerli bir tutar girin.");
+      }
+    }
+
+    function openOdemeList() {
+      const liste = document.getElementById("odemeListe");
+      liste.innerHTML = "";
+
+      if (odemeler.length === 0) {
+        liste.innerHTML = "<p style='text-align:center'>Henüz ödeme girilmedi.</p>";
+        return;
+      }
+
+      const table = document.createElement("table");
+      table.style.width = "100%";
+      table.style.borderCollapse = "collapse";
+      table.innerHTML = `
+        <thead>
+          <tr style="background:#f1f1f1">
+            <th style="padding:6px;">Tutar</th>
+            <th>Yöntem</th>
+            <th>Not</th>
+            <th>Tarih</th>
+            <th>İşlem</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${odemeler.map((o, i) => `
+            <tr>
+              <td style="text-align:center;">${o.birim} ${formatTutar(o.tutar)}</td>
+              <td style="text-align:center">${o.yontem}</td>
+              <td style="text-align:center">${o.not}</td>
+              <td style="text-align:center">${formatTarih(o.tarih)}</td>
+              <td style="text-align:center">
+                <button class="btn btn-warning btn-sm" onclick="duzenleOdeme(${i})">✏</button>
+                <button class="btn btn-danger btn-sm" onclick="silOdeme(${i})">✖</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>`;
+      liste.appendChild(table);
+      openModal("odemeListModal");
+    }
+
+    function silOdeme(i) {
+      const silinen = odemeler.splice(i, 1)[0];
+      const alinan = document.getElementById("alinan");
+      const mevcut = parseFloat(alinan.value.replace(/\./g, "").replace(",", ".")) || 0;
+      alinan.value = (mevcut - silinen.tutar).toLocaleString("tr-TR", { minimumFractionDigits: 2 });
+      openOdemeList();
+    }
+
+    function duzenleOdeme(i) {
+      const o = odemeler[i];
+      document.getElementById("odemeTutar").value = o.tutar;
+      document.getElementById("odemeYontem").value = o.yontem;
+      document.getElementById("odemeNot").value = o.not;
+      document.getElementById("odemeTarih").value = o.tarih;
+      document.getElementById("paraBirimi").value = o.birim;
+      guncelleSemboller();
+      silOdeme(i);
+      closeModal("odemeListModal");
+      openModal("odemeModal");
+    }
+
+    document.getElementById("rezForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      alert("Rezervasyon kaydedildi!");
+      this.reset();
+      odemeler.length = 0;
+      document.getElementById("alinan").value = "0,00";
+      guncelleSemboller();
+      closeModal("rezModal");
+    });
+
+    window.onload = guncelleSemboller;
+  </script>
+
+</body>
+</html>
